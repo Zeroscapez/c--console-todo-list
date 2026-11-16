@@ -3,7 +3,8 @@ using System.Globalization;
 using System.Net;
 List<(int Id, string Title)> tasks = new();
 HashSet<int> completedTask = new();
-int taskID = 0;
+var deleted = new Stack<(int Index, int Id, string Title)>();
+int nextId = 1;
 
 
 while (true)
@@ -33,13 +34,13 @@ while (true)
         switch (choice)
         {
             case 1:
-                AddTask(tasks);
+                AddTask(tasks, ref nextId);
                 break;
             case 2:
-                PrintAllTask(tasks);
+                PrintAllTask(tasks, completedTask);
                 break;
             case 3:
-                MarkComplete(taskID, tasks, completedTask);
+                MarkComplete(tasks, completedTask);
                 break;
         }
     }
@@ -47,43 +48,93 @@ while (true)
 }
 
 
-static void PrintAllTask(List<(int Id, string Title)> list)
+static void PrintAllTask(List<(int Id, string Title)> tasks, HashSet<int> completedIds)
 {
-    for (int n = 0; n < list.Count; n++)
+    if (tasks.Count == 0)
     {
-        Console.WriteLine($"{list[n].Id}: {list[n].Title}");
-    }
-
-}
-
-
-
-static void AddTask(List<(int Id, string Title)> tasks)
-{
-    int taskID = tasks.Count + 1;
-    Console.Write("Insert name of task to add: ");
-    string taskname = Console.ReadLine();
-    tasks.Add((taskID, taskname));
-
-}
-
-static void MarkComplete(int n, List<(int Id, string Title)> tasks, HashSet<int> completionStatuses)
-{
-    completionStatuses.Add(n);
-}
-
-static void DeleteTask(int n, List<string> tasks, HashSet<int> completionStatuses)
-{
-    Console.Write("Insert task number to delete: ");
-    if (!int.TryParse(Console.ReadLine(), out int choice) || n < 1 || choice > tasks.Count)
-    {
-        Console.WriteLine($"Please enter a number from 1 to {tasks.Count}.");
+        Console.WriteLine("There are no tasks.");
         return;
     }
 
-    int index = n - 1;
-    completionStatuses.Remove(index);
+    for (int n = 0; n < tasks.Count; n++)
+    {
+        var task = tasks[n];
+        string completion = completedIds.Contains(task.Id) ? "Completed" : "Incomplete";
+        Console.WriteLine($"{n + 1}: {task.Title} - {completion}");
+    }
+
+}
+
+
+
+
+
+
+static void AddTask(List<(int Id, string Title)> tasks, ref int nextId)
+{
+    Console.Write("Name of task to add: ");
+    string? title = Console.ReadLine()?.Trim();
+
+    if (string.IsNullOrWhiteSpace(title))
+    {
+        Console.WriteLine("Task name can't be empty.");
+        return;
+    }
+
+    tasks.Add((nextId, title));
+    nextId++;
+}
+
+static void MarkComplete(List<(int Id, string Title)> tasks, HashSet<int> completedIds)
+{
+    if (ReadTaskIndex(tasks, "Task number to mark complete: ") is not int index)
+    {
+        return;
+    }
+
+    var task = tasks[index];
+    if (completedIds.Add(task.Id))
+    {
+        Console.WriteLine($"Marked \"{task.Title}\" as complete.");
+
+    }
+    else
+    {
+        Console.WriteLine($"\"{task.Title}\" was already complete.");
+    }
+
+}
+
+static void DeleteTask(List<(int Id, string Title)> tasks, Stack<(int Index, int Id, string Title)> deleted)
+{
+    if (ReadTaskIndex(tasks, "Task number to delete: ") is not int index)
+    {
+        return;
+    }
+
+    var task = tasks[index];
     tasks.RemoveAt(index);
+    deleted.Push((index, task.Id, task.Title));
 
 
+
+}
+
+
+static int? ReadTaskIndex(List<(int Id, string Title)> tasks, string prompt)
+{
+    if (tasks.Count == 0)
+    {
+        Console.WriteLine("There are no tasks.");
+        return null;
+    }
+
+    Console.Write(prompt);
+    if (!int.TryParse(Console.ReadLine(), out int number) || number < 1 || number > tasks.Count)
+    {
+        Console.WriteLine($"Please enter a number from 1 to {tasks.Count}.");
+        return null;
+    }
+
+    return number - 1;
 }
